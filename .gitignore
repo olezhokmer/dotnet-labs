@@ -245,3 +245,14 @@ $RECYCLE.BIN/
 
 # JetBrains Rider
 .idea/
+
+# .NET
+*.dll
+*.exe
+*.pdb
+*.log
+*.vscode/
+*.vs2019/
+obj/
+bin/
+out/
