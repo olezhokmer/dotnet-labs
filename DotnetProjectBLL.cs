@@ -20,9 +20,15 @@ namespace DotnetProject.BLL
 
         public User createUser(string userName, string pass) 
         {
+            if (_context.Users.Any(u => u.username == userName))
+            {
+                throw new InvalidOperationException("User with the same username already exists.");
+            }
+
             User user = new User { username = userName, password = pass };
             _context.Users.Add(user);
             _context.SaveChanges();
+
             return user;
         }
     }
