@@ -14,6 +14,8 @@ class DotnetPrj
         {
             ConsoleInteraction interaction = new ConsoleInteraction(context);
 
+            interaction.RunCustomDictionaryOperations();
+
             interaction.ImitateSocialMediaActivity();
         }
     }
