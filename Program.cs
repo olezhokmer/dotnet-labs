@@ -4,18 +4,101 @@ using Microsoft.Extensions.DependencyInjection;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 using DotnetProject.DAL;
 using DotnetProject.PL;
+using System.IO;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using DotnetProject.BLL;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Cryptography;
+using DotnetProject.Middleware;
+using DotnetProject.Configuration;
+using Microsoft.Extensions.Options;
 
-class DotnetPrj
-{
-    static void Main()
+namespace DotnetProject.EntryPoint {
+    class DotnetPrj
     {
-        using (var context = new DotnetProjectDbContext())
+        static void Main()
         {
-            ConsoleInteraction interaction = new ConsoleInteraction(context);
+            new WebHostBuilder()
+                .UseKestrel()
+                .UseContentRoot(Directory.GetCurrentDirectory())
+                .UseIISIntegration()
+                .UseStartup<Startup>()
+                .Build()
+                .Run();
+        }
+    }
+    public class Startup
+    {
+        public Startup(IHostingEnvironment env)
+        {
+            Configuration = new ConfigurationBuilder()
+                .SetBasePath(env.ContentRootPath)
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddEnvironmentVariables()
+                .Build();
+        }
 
-            interaction.RunCustomDictionaryOperations();
+        public IConfigurationRoot Configuration { get; }
 
-            interaction.ImitateSocialMediaActivity();
+        public void ConfigureServices(IServiceCollection services)
+        {
+            services.AddMvc();
+            services.Configure<ProjectConfiguration>(Configuration.GetSection("AppSettings"));
+            ProjectConfiguration projectConfig = services
+                .BuildServiceProvider()
+                .GetService<IOptions<ProjectConfiguration>>()
+                .Value;
+            string dbConnectionString = projectConfig.DbConnectionString;
+
+            services.AddDbContext<DotnetProjectDbContext>(options =>
+            {
+                options
+                    .UseMySql(
+                        dbConnectionString,
+                        ServerVersion.AutoDetect(dbConnectionString)
+                    );
+            });
+            services.AddScoped<MessagesService>();
+            services.AddScoped<UsersService>();
+            services.AddScoped<FriendshipService>();
+            services.AddScoped<JwtService>();
+
+            TokenValidationParameters parameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = projectConfig.JwtIssuer,
+                ValidAudience = projectConfig.JwtAudience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(projectConfig.JwtSecret))
+            };
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = parameters;
+                });
+            services.AddAuthorization();
+        }
+
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
+        {
+            app.UseMiddleware<ErrorHandlingMiddleware>();
+            app.UseRouting();
+            app.UseAuthentication();
+            app.UseAuthorization();
+
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+            });
         }
     }
 }

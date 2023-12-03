@@ -1,16 +1,27 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using DotnetProject.DAL;
+using Microsoft.IdentityModel.Tokens;
+using System;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using DotnetProject.Exceptions;
+using DotnetProject.Configuration;
+using Microsoft.Extensions.Options;
+
 
 namespace DotnetProject.BLL
 {
-    class UsersService 
+    public class UsersService 
     {
         private readonly DotnetProjectDbContext _context;
+        private readonly JwtService _jwtService;
 
-        public UsersService(DotnetProjectDbContext context)
+        public UsersService(JwtService jwtService, DotnetProjectDbContext context)
         {
             _context = context;
+            _jwtService = jwtService;
         }
 
         public User getUserByUsername(string userName)
@@ -18,11 +29,35 @@ namespace DotnetProject.BLL
             return _context.Users.SingleOrDefault(u => u.username == userName);
         }
 
+        public string Login(string userName, string pass)
+        {
+            User user = this.getUserByUsername(userName);
+
+            if (user == null)
+            {
+                throw new NotFoundException("User by this username was not found.");
+            }
+
+            if (user.password != pass)
+            {
+                throw new ForbiddenException("Password is wrong.");
+            }
+
+            return this._jwtService.GenerateJwtToken(user.userId.ToString());
+        }
+
+        public string signUp(string userName, string pass)
+        {
+            User user = this.createUser(userName, pass);
+
+            return this._jwtService.GenerateJwtToken(user.userId.ToString());
+        }
+
         public User createUser(string userName, string pass) 
         {
             if (_context.Users.Any(u => u.username == userName))
             {
-                throw new InvalidOperationException("User with the same username already exists.");
+                throw new BadRequestException("User with the same username already exists.");
             }
 
             User user = new User { username = userName, password = pass };
@@ -33,7 +68,7 @@ namespace DotnetProject.BLL
         }
     }
 
-    class MessagesService
+    public class MessagesService
     {
         private readonly DotnetProjectDbContext _context;
 
@@ -82,7 +117,7 @@ namespace DotnetProject.BLL
 
     }
 
-    class FriendshipService
+    public class FriendshipService
     {
         private readonly DotnetProjectDbContext _context;
 
@@ -133,6 +168,34 @@ namespace DotnetProject.BLL
                         .ToList();
 
             return friends;
+        }
+    }
+
+    public class JwtService
+    {
+        private readonly string _key;
+
+        public JwtService(IOptions<ProjectConfiguration> configuration)
+        {
+            _key = configuration.Value.JwtSecret;
+        }
+
+        public string GenerateJwtToken(string userId)
+        {
+            JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
+            byte[] key = Encoding.ASCII.GetBytes(_key);
+
+            SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId) }),
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256Signature
+                )
+            };
+
+            SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
     }
 }
