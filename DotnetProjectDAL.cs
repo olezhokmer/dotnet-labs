@@ -6,8 +6,6 @@ namespace DotnetProject.DAL
 {
     public class DotnetProjectDbContext : DbContext
     {
-        // static readonly string connectionString = "Server=localhost; User ID=root; Password=rootroot; Database=dotnet";
-
         public DbSet<User> Users { get; set; }
         public DbSet<FriendshipRequest> FriendshipRequests { get; set; }
         public DbSet<Message> Messages { get; set; }
@@ -15,12 +13,6 @@ namespace DotnetProject.DAL
         public DotnetProjectDbContext(DbContextOptions<DotnetProjectDbContext> options) : base(options)
         {
         }
-
-        // protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        // {
-        //     optionsBuilder
-        //         .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
-        // }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
