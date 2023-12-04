@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
+using System.Text.Json.Serialization;
 
 namespace DotnetProject.DAL
 {
@@ -49,12 +49,16 @@ namespace DotnetProject.DAL
         public string username { get; set; }
         public string password { get; set; }
 
+        [JsonIgnore]
         public List<FriendshipRequest> SentFriendshipRequests { get; set; }
 
+        [JsonIgnore]
         public List<FriendshipRequest> ReceivedFriendshipRequests { get; set; }
 
+        [JsonIgnore]
         public List<Message> SentMessages { get; set; }
 
+        [JsonIgnore]
         public List<Message> ReceivedMessages { get; set; }
     }
 
@@ -65,8 +69,10 @@ namespace DotnetProject.DAL
         public int toUserId { get; set; }
         public bool isAccepted { get; set; }
 
+        [JsonIgnore]
         public User FromUser { get; set; }
 
+        [JsonIgnore]
         public User ToUser { get; set; }
     }
 
@@ -77,8 +83,10 @@ namespace DotnetProject.DAL
         public int toUserId { get; set; }
         public string message { get; set; }
 
+        [JsonIgnore]
         public User FromUser { get; set; }
 
+        [JsonIgnore]
         public User ToUser { get; set; }
     }
 }

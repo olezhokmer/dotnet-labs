@@ -133,48 +133,25 @@ namespace DotnetProject.BLL
             return message;
         }
 
-        public Dictionary<User, List<Message>> getMessages(int userId)
+        public MessagesDto GetMessagesBetweenUsers(int currentUserId, int messengerId)
         {
-            var userMessages = _context.Messages
-                .Where(message => message.fromUserId == userId || message.toUserId == userId)
+            List<Message> userMessages = _context.Messages
+                .Where(message =>
+                    (message.fromUserId == currentUserId && message.toUserId == messengerId) ||
+                    (message.fromUserId == messengerId && message.toUserId == currentUserId))
                 .ToList();
 
-            var distinctUserIds = userMessages.Select(message => message.fromUserId == userId ? message.toUserId : message.fromUserId).Distinct();
+            User otherUser = _context.Users.FirstOrDefault(user => user.userId == messengerId);
 
-            var userMessageDictionary = new Dictionary<User, List<Message>>();
+            List<Message> messagesBetweenUsers = userMessages.OrderBy(message => message.messageId).ToList();
 
-            foreach (var otherUserId in distinctUserIds)
+            MessagesDto messagesDto = new MessagesDto
             {
-                var otherUser = _context.Users.FirstOrDefault(user => user.userId == otherUserId);
+                user = this._usersService.mapToPublicProfile(otherUser),
+                messages = messagesBetweenUsers
+            };
 
-                if (otherUser != null)
-                {
-                    var messagesBetweenUsers = userMessages
-                        .Where(message =>
-                            (message.fromUserId == userId && message.toUserId == otherUserId) ||
-                            (message.fromUserId == otherUserId && message.toUserId == userId))
-                        .ToList();
-
-                    userMessageDictionary.Add(otherUser, messagesBetweenUsers);
-                }
-            }
-
-            return userMessageDictionary;
-        }
-
-        public List<MessagesDto> getMessagesDtosList(int userId)
-        {
-            Dictionary<User, List<Message>> userMessagesDict = this.getMessages(userId);
-
-            List<MessagesDto> messagesDtoList = userMessagesDict
-                .Select(pair => new MessagesDto
-                {
-                    user = this._usersService.mapToPublicProfile(pair.Key),
-                    messages = pair.Value
-                })
-                .ToList();
-
-            return messagesDtoList;
+            return messagesDto;
         }
     }
 

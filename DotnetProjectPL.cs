@@ -143,15 +143,15 @@ namespace DotnetProject.PL {
             return Ok(new { message });
         }
 
-        [HttpGet()]
+        [HttpGet("{id}")]
         [Authorize]
-        public IActionResult GetMesseges()
+        public IActionResult GetMesseges(int id)
         {
             int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            List<MessagesDto> messages = this._messagesService.getMessagesDtosList(userId);
+            MessagesDto response = this._messagesService.GetMessagesBetweenUsers(userId, id);
             
-            return Ok(new { messages });
+            return Ok(new { response });
         }
     }
 }
