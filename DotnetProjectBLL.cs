@@ -237,6 +237,26 @@ namespace DotnetProject.BLL
             return friends;
         }
 
+        public List<User> GetUsersWhoSentFriendshipRequest(int userId)
+        {
+            List<User> usersWithRequests = _context.FriendshipRequests
+                .Where(req => req.toUserId == userId && req.isAccepted == false)
+                .Select(req => req.FromUser)
+                .Distinct()
+                .ToList();
+
+            return usersWithRequests;
+        }
+
+        public List<PublicProfileInfo> GetProfilesWhoSentFriendshipRequest(int userId)
+        {
+            List<User> usersWithRequests = this.GetUsersWhoSentFriendshipRequest(userId);
+
+            List<PublicProfileInfo> profiles = this._usersService.mapUsersToProfiles(usersWithRequests);
+
+            return profiles;
+        }
+
         public List<User> getPossibleFriends(int userId) {
             List<User> usersWithoutRequests = _context.Users
                 .Where(u => u.userId != userId && 

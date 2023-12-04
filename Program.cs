@@ -52,6 +52,16 @@ namespace DotnetProject.EntryPoint {
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowAll",
+                    builder =>
+                    {
+                        builder.AllowAnyOrigin()
+                            .AllowAnyMethod()
+                            .AllowAnyHeader();
+                    });
+            });
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet project API", Version = "v1" });
@@ -113,6 +123,7 @@ namespace DotnetProject.EntryPoint {
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
+            app.UseCors("AllowAll");
             app.UseMiddleware<ErrorHandlingMiddleware>();
             app.UseRouting();
             app.UseAuthentication();
