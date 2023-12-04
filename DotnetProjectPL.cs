@@ -118,6 +118,17 @@ namespace DotnetProject.PL {
             
             return Ok(new { possibleFriends });
         }
+
+        [HttpGet("requests")]
+        [Authorize]
+        public IActionResult GetFriendshipRequestors()
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<PublicProfileInfo> profiles = this._friendshipService.GetProfilesWhoSentFriendshipRequest(userId);
+            
+            return Ok(new { profiles });
+        }
     }
 
     [Route("messages")]
