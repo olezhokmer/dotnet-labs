@@ -88,6 +88,29 @@ namespace DotnetProject.BLL
 
             return user;
         }
+
+        public List<User> GetAllUsers()
+        {
+            return _context.Users.ToList();
+        }
+
+        public List<PublicProfileInfo> mapUsersToProfiles(List<User> users)
+        {
+            List<PublicProfileInfo> profiles = users.ConvertAll(
+                u => this.mapToPublicProfile(u)
+            );
+
+            return profiles;
+        }
+
+        public List<PublicProfileInfo> getAllUserProfiles()
+        {
+            List<User> allUsers = this.GetAllUsers();
+
+            List<PublicProfileInfo> profiles = this.mapUsersToProfiles(allUsers);
+
+            return profiles;
+        }
     }
 
     public class MessagesService
@@ -237,13 +260,30 @@ namespace DotnetProject.BLL
             return friends;
         }
 
+        public List<User> getPossibleFriends(int userId) {
+            List<User> usersWithoutRequests = _context.Users
+                .Where(u => u.userId != userId && 
+                            !u.SentFriendshipRequests.Any(fr => fr.ToUser.userId == userId) &&
+                            !u.ReceivedFriendshipRequests.Any(fr => fr.FromUser.userId == userId))
+                .ToList();
+
+            return usersWithoutRequests;
+        }
+
+        public List<PublicProfileInfo> getPossibleFriendProfiles(int userId)
+        {
+            List<User> friends = this.getPossibleFriends(userId);
+
+            List<PublicProfileInfo> profiles = this._usersService.mapUsersToProfiles(friends);
+
+            return profiles;
+        }
+
         public List<PublicProfileInfo> getFriendProfiles(int userId)
         {
             List<User> friends = this.getFriends(userId);
 
-            List<PublicProfileInfo> profiles = friends.ConvertAll(
-                f => this._usersService.mapToPublicProfile(f)
-            );
+            List<PublicProfileInfo> profiles = this._usersService.mapUsersToProfiles(friends);
 
             return profiles;
         }

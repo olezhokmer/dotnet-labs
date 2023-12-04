@@ -19,6 +19,8 @@ using System.Security.Cryptography;
 using DotnetProject.Middleware;
 using DotnetProject.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace DotnetProject.EntryPoint {
     class DotnetPrj
@@ -50,6 +52,29 @@ namespace DotnetProject.EntryPoint {
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc();
+            services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Dotnet project API", Version = "v1" });
+                c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Description = "JWT Authorization header using the Bearer scheme. Example: 'Bearer {token}'",
+                    Name = "Authorization",
+                    In = ParameterLocation.Header,
+                    Type = SecuritySchemeType.ApiKey,
+                    Scheme = "Bearer"
+                });
+
+                c.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+                        },
+                        new string[] {}
+                    }
+                });
+            });
             services.Configure<ProjectConfiguration>(Configuration.GetSection("AppSettings"));
             ProjectConfiguration projectConfig = services
                 .BuildServiceProvider()
@@ -96,6 +121,12 @@ namespace DotnetProject.EntryPoint {
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+            });
+            app.UseSwagger();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Dotnet project API V1");
+                c.RoutePrefix = "swagger";
             });
         }
     }

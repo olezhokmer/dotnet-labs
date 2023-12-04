@@ -51,6 +51,14 @@ namespace DotnetProject.PL {
                 
             return Ok(new { profile });
         }
+
+        [HttpGet("all")]
+        public IActionResult GetAllUsers()
+        {
+            List<PublicProfileInfo> profiles = this._usersService.getAllUserProfiles();
+                
+            return Ok(new { profiles });
+        }
     }
 
     [Route("friendship")]
@@ -98,6 +106,17 @@ namespace DotnetProject.PL {
             List<PublicProfileInfo> profiles = this._friendshipService.getFriendProfiles(userId);
             
             return Ok(new { profiles });
+        }
+
+        [HttpGet("possible-friends")]
+        [Authorize]
+        public IActionResult GetPossibleFriends()
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<PublicProfileInfo> possibleFriends = this._friendshipService.getPossibleFriendProfiles(userId);
+            
+            return Ok(new { possibleFriends });
         }
     }
 
