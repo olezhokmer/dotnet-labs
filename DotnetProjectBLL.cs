@@ -9,7 +9,7 @@ using System.Text;
 using DotnetProject.Exceptions;
 using DotnetProject.Configuration;
 using Microsoft.Extensions.Options;
-
+using DotnetProject.DTO;
 
 namespace DotnetProject.BLL
 {
@@ -27,6 +27,18 @@ namespace DotnetProject.BLL
         public User getUserByUsername(string userName)
         {
             return _context.Users.SingleOrDefault(u => u.username == userName);
+        }
+
+        public User getUserByUserId(int userId)
+        {
+            return _context.Users.SingleOrDefault(u => u.userId == userId);
+        }
+
+        public PublicProfileInfo getUserPublicProfile(int userId)
+        {
+            User user = this.getUserByUserId(userId);
+
+            return this.mapToPublicProfile(user);
         }
 
         public string Login(string userName, string pass)
@@ -53,6 +65,16 @@ namespace DotnetProject.BLL
             return this._jwtService.GenerateJwtToken(user.userId.ToString());
         }
 
+        public PublicProfileInfo mapToPublicProfile(User user)
+        {
+            PublicProfileInfo profile = new PublicProfileInfo();
+
+            profile.userId = user.userId;
+            profile.Username = user.username;
+
+            return profile;
+        }
+
         public User createUser(string userName, string pass) 
         {
             if (_context.Users.Any(u => u.username == userName))
@@ -71,10 +93,12 @@ namespace DotnetProject.BLL
     public class MessagesService
     {
         private readonly DotnetProjectDbContext _context;
+        private readonly UsersService _usersService;
 
-        public MessagesService(DotnetProjectDbContext context)
+        public MessagesService(DotnetProjectDbContext context, UsersService usersService)
         {
             _context = context;
+            _usersService = usersService;
         }
 
         public Message sendMessage(int to, int from, string messageText) {
@@ -115,19 +139,57 @@ namespace DotnetProject.BLL
             return userMessageDictionary;
         }
 
+        public List<MessagesDto> getMessagesDtosList(int userId)
+        {
+            Dictionary<User, List<Message>> userMessagesDict = this.getMessages(userId);
+
+            List<MessagesDto> messagesDtoList = userMessagesDict
+                .Select(pair => new MessagesDto
+                {
+                    user = this._usersService.mapToPublicProfile(pair.Key),
+                    messages = pair.Value
+                })
+                .ToList();
+
+            return messagesDtoList;
+        }
     }
 
     public class FriendshipService
     {
         private readonly DotnetProjectDbContext _context;
+        private readonly UsersService _usersService;
 
-        public FriendshipService(DotnetProjectDbContext context)
+        public FriendshipService(DotnetProjectDbContext context, UsersService usersService)
         {
             _context = context;
+            _usersService = usersService;
         }
 
         public FriendshipRequest sendFriendshipRequest(int from, int to)
         {
+            FriendshipRequest found = _context
+                .FriendshipRequests
+                .SingleOrDefault(
+                    r => r.fromUserId == from && r.toUserId == to
+                );
+
+            if (found != null)
+            {
+                throw new BadRequestException("You have already sent a friendship request.");
+            }
+
+            FriendshipRequest reversedRequest = _context
+                .FriendshipRequests
+                .SingleOrDefault(
+                    r => r.fromUserId == to && r.toUserId == from
+                );
+
+            if (reversedRequest != null)
+            {
+                throw new BadRequestException("This person has already sent you a friendship request.");
+            }
+
             FriendshipRequest request = new FriendshipRequest
             {
                 fromUserId = from,
@@ -146,6 +208,11 @@ namespace DotnetProject.BLL
             var friendshipRequests = _context.FriendshipRequests
                 .Where(r => (r.fromUserId == friendId && r.toUserId == targetId) || (r.toUserId == friendId && r.fromUserId == targetId) )
                 .ToList();
+
+            if (friendshipRequests.Count == 0)
+            {
+                throw new NotFoundException("Friendship request was not found.");
+            }
 
             foreach (var friendshipRequest in friendshipRequests)
             {
@@ -168,6 +235,17 @@ namespace DotnetProject.BLL
                         .ToList();
 
             return friends;
+        }
+
+        public List<PublicProfileInfo> getFriendProfiles(int userId)
+        {
+            List<User> friends = this.getFriends(userId);
+
+            List<PublicProfileInfo> profiles = friends.ConvertAll(
+                f => this._usersService.mapToPublicProfile(f)
+            );
+
+            return profiles;
         }
     }
 

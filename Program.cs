@@ -72,12 +72,10 @@ namespace DotnetProject.EntryPoint {
 
             TokenValidationParameters parameters = new TokenValidationParameters
             {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = false,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = projectConfig.JwtIssuer,
-                ValidAudience = projectConfig.JwtAudience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(projectConfig.JwtSecret))
             };
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

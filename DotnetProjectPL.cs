@@ -5,6 +5,8 @@ using DotnetProject.DTO;
 using CustomDictionaryLibrary;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using DotnetProject.Exceptions;
 
 namespace DotnetProject.PL {
     [Route("users")]
@@ -43,7 +45,11 @@ namespace DotnetProject.PL {
         [Authorize]
         public IActionResult GetUser()
         {
-            return Content("User");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            PublicProfileInfo profile = this._usersService.getUserPublicProfile(userId);
+                
+            return Ok(new { profile });
         }
     }
 
@@ -59,21 +65,39 @@ namespace DotnetProject.PL {
 
         [HttpPut()]
         [Authorize]
-        public IActionResult SendRequest()
+        public IActionResult SendRequest([FromBody] SendFriendshipRequestDto dto)
         {
-            return Content("Send request");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            this._friendshipService.sendFriendshipRequest(userId, dto.toUserId);
+
+            string message = "Friendship request has been sent successfuly";
+
+            return Ok(new { message });
         }
 
         [HttpPatch()]
-        public IActionResult Accept()
+        [Authorize]
+        public IActionResult Accept([FromBody] AcceptFriendshipRequestDto dto)
         {
-            return Content("Accept request");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            this._friendshipService.acceptFriendshipRequest(dto.friendId, userId);
+
+            string message = "Friendship request was accepted successfuly";
+
+            return Ok(new { message });
         }
 
         [HttpGet()]
+        [Authorize]
         public IActionResult GetFriends()
         {
-            return Content("Get friends");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<PublicProfileInfo> profiles = this._friendshipService.getFriendProfiles(userId);
+            
+            return Ok(new { profiles });
         }
     }
 
@@ -88,15 +112,27 @@ namespace DotnetProject.PL {
         }
 
         [HttpPut()]
-        public IActionResult SendMessage()
+        [Authorize]
+        public IActionResult SendMessage([FromBody] SendMessageDto dto)
         {
-            return Content("Send message");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            this._messagesService.sendMessage(dto.to, userId, dto.Message);
+
+            string message = "Message was delivered successfuly";
+
+            return Ok(new { message });
         }
 
         [HttpGet()]
+        [Authorize]
         public IActionResult GetMesseges()
         {
-            return Content("Get messeges");
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<MessagesDto> messages = this._messagesService.getMessagesDtosList(userId);
+            
+            return Ok(new { messages });
         }
     }
 }
