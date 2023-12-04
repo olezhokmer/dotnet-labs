@@ -1,21 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
+using System.Text.Json.Serialization;
 
 namespace DotnetProject.DAL
 {
     public class DotnetProjectDbContext : DbContext
     {
-        static readonly string connectionString = "Server=localhost; User ID=root; Password=rootroot; Database=dotnet";
-
         public DbSet<User> Users { get; set; }
         public DbSet<FriendshipRequest> FriendshipRequests { get; set; }
         public DbSet<Message> Messages { get; set; }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        public DotnetProjectDbContext(DbContextOptions<DotnetProjectDbContext> options) : base(options)
         {
-            optionsBuilder
-                .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -53,12 +49,16 @@ namespace DotnetProject.DAL
         public string username { get; set; }
         public string password { get; set; }
 
+        [JsonIgnore]
         public List<FriendshipRequest> SentFriendshipRequests { get; set; }
 
+        [JsonIgnore]
         public List<FriendshipRequest> ReceivedFriendshipRequests { get; set; }
 
+        [JsonIgnore]
         public List<Message> SentMessages { get; set; }
 
+        [JsonIgnore]
         public List<Message> ReceivedMessages { get; set; }
     }
 
@@ -69,8 +69,10 @@ namespace DotnetProject.DAL
         public int toUserId { get; set; }
         public bool isAccepted { get; set; }
 
+        [JsonIgnore]
         public User FromUser { get; set; }
 
+        [JsonIgnore]
         public User ToUser { get; set; }
     }
 
@@ -81,8 +83,10 @@ namespace DotnetProject.DAL
         public int toUserId { get; set; }
         public string message { get; set; }
 
+        [JsonIgnore]
         public User FromUser { get; set; }
 
+        [JsonIgnore]
         public User ToUser { get; set; }
     }
 }

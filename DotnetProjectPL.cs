@@ -1,99 +1,157 @@
 using System;
 using DotnetProject.BLL;
 using DotnetProject.DAL;
+using DotnetProject.DTO;
 using CustomDictionaryLibrary;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
+using DotnetProject.Exceptions;
 
 namespace DotnetProject.PL {
-    class ConsoleInteraction
-    {
-        private readonly UsersService usersService;
-        private readonly MessagesService messagesService;
-        private readonly FriendshipService friendshipService;
+    [Route("users")]
+    public class UsersController : Controller
+    {   
+        private readonly UsersService _usersService;
 
-        public ConsoleInteraction(DotnetProjectDbContext context)
+        public UsersController(UsersService usersService)
         {
-            usersService = new UsersService(context);
-            messagesService = new MessagesService(context);
-            friendshipService = new FriendshipService(context);
+            _usersService = usersService;
         }
 
-        public void RunCustomDictionaryOperations()
-        {
-            CustomDictionary<int, string> dictionary = new CustomDictionary<int, string>();
+        [HttpPut()]
+        public IActionResult SignUp([FromBody] UserAuthRequest userAuthRequest)
+        {   
+            string token = this._usersService.signUp(
+                userAuthRequest.Username,
+                userAuthRequest.Password
+            );
 
-            dictionary.ItemAdded += (sender, args) =>
-            {
-                Console.WriteLine($"Item added: Key = {args.Key}, Value = {args.Value}");
-            };
-
-            dictionary.Add(1, "One");
-            dictionary.Add(2, "Two");
-
-            try
-            {
-                string value = dictionary[3];
-                Console.WriteLine($"Item found: {value}");
-            }
-            catch (KeyNotFoundException ex)
-            {
-                Console.WriteLine($"Error: {ex.Message}");
-            }
-
-            Console.WriteLine(dictionary.ContainsKey(1));
-            dictionary.Remove(1);
-            Console.WriteLine(dictionary.ContainsKey(1));
+            return Ok(new { token });
         }
 
-        public void ImitateSocialMediaActivity() {
-            Dictionary<string, User> usersDictionary = new Dictionary<string, User>();
-            List<string> names = new List<string> { "David", "Eve", "Frank", "Bob", "Marry", "Hector" };
+        [HttpPost()]
+        public IActionResult Login([FromBody] UserAuthRequest userAuthRequest)
+        {
+            string token = this._usersService.Login(
+                userAuthRequest.Username,
+                userAuthRequest.Password
+            );
 
-            foreach (string name in names)
-            {
-                User user = this.usersService.getUserByUsername(name);
-                if (user == null)
-                {
-                    user = this.usersService.createUser(name, "123456");
-                }
+            return Ok(new { token });
+        }
 
-                usersDictionary.Add(name, user);
-            }
+        [HttpGet()]
+        [Authorize]
+        public IActionResult GetUser()
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-            if (usersDictionary.TryGetValue("David", out User david))
-            {
-                if (usersDictionary.TryGetValue("Bob", out User bob))
-                {
-                    int davidId = david.userId;
-                    int bobId = bob.userId;
-                    this.messagesService.sendMessage(davidId, bobId, "Hello, how is it going?");
-                    this.messagesService.sendMessage(bobId, davidId, "Hey Bob, fine! Let's be friends!");
+            PublicProfileInfo profile = this._usersService.getUserPublicProfile(userId);
+                
+            return Ok(new { profile });
+        }
 
-                    this.friendshipService.sendFriendshipRequest(bobId, davidId);
-                    this.friendshipService.acceptFriendshipRequest(bobId, davidId);
+        [HttpGet("all")]
+        public IActionResult GetAllUsers()
+        {
+            List<PublicProfileInfo> profiles = this._usersService.getAllUserProfiles();
+                
+            return Ok(new { profiles });
+        }
+    }
 
-                    Dictionary<User, List<Message>> bobsMessages = this.messagesService.getMessages(bobId);
-                    
-                    foreach (var kvp in bobsMessages)
-                    {
-                        User user = kvp.Key;
-                        List<Message> messages = kvp.Value;
+    [Route("friendship")]
+    public class FriendshipController : Controller
+    {   
+        private readonly FriendshipService _friendshipService;
 
-                        Console.WriteLine($"Messages for user '{user.username}':");
+        public FriendshipController(FriendshipService friendshipService)
+        {
+            _friendshipService = friendshipService;
+        }
 
-                        foreach (var message in messages)
-                        {
-                            Console.WriteLine($"  Message {message.messageId}: {message.message}");
-                        }
-                    }
+        [HttpPut()]
+        [Authorize]
+        public IActionResult SendRequest([FromBody] SendFriendshipRequestDto dto)
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
-                    List<User> friends = this.friendshipService.getFriends(bobId);
+            this._friendshipService.sendFriendshipRequest(userId, dto.toUserId);
 
-                    foreach (var friend in friends)
-                    {
-                        Console.WriteLine($"  User ID: {friend.userId}, Username: {friend.username}");
-                    }
-                }
-            }
+            string message = "Friendship request has been sent successfuly";
+
+            return Ok(new { message });
+        }
+
+        [HttpPatch()]
+        [Authorize]
+        public IActionResult Accept([FromBody] AcceptFriendshipRequestDto dto)
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            this._friendshipService.acceptFriendshipRequest(dto.friendId, userId);
+
+            string message = "Friendship request was accepted successfuly";
+
+            return Ok(new { message });
+        }
+
+        [HttpGet()]
+        [Authorize]
+        public IActionResult GetFriends()
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<PublicProfileInfo> profiles = this._friendshipService.getFriendProfiles(userId);
+            
+            return Ok(new { profiles });
+        }
+
+        [HttpGet("possible-friends")]
+        [Authorize]
+        public IActionResult GetPossibleFriends()
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            List<PublicProfileInfo> possibleFriends = this._friendshipService.getPossibleFriendProfiles(userId);
+            
+            return Ok(new { possibleFriends });
+        }
+    }
+
+    [Route("messages")]
+    public class MessagesController : Controller
+    {   
+        private readonly MessagesService _messagesService;
+
+        public MessagesController(MessagesService messagesService)
+        {
+            _messagesService = messagesService;
+        }
+
+        [HttpPut()]
+        [Authorize]
+        public IActionResult SendMessage([FromBody] SendMessageDto dto)
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            this._messagesService.sendMessage(dto.to, userId, dto.Message);
+
+            string message = "Message was delivered successfuly";
+
+            return Ok(new { message });
+        }
+
+        [HttpGet("{id}")]
+        [Authorize]
+        public IActionResult GetMesseges(int id)
+        {
+            int userId = Int32.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+
+            MessagesDto response = this._messagesService.GetMessagesBetweenUsers(userId, id);
+            
+            return Ok(new { response });
         }
     }
 }
